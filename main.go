@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"google.golang.org/api/iterator"
@@ -12,6 +13,7 @@ import (
 	"cloud.google.com/go/compute/metadata"
 	"cloud.google.com/go/firestore"
 	cloudkms "cloud.google.com/go/kms/apiv1"
+	"cloud.google.com/go/storage"
 	"github.com/nlopes/slack"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 )
@@ -27,6 +29,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	encryptedEncodedOauthToken := os.Getenv("OAUTH_TOKEN")
 	if encryptedEncodedOauthToken == "" {
 		log.Fatal("Slack OAuth Token not provided")
+	}
+
+	messageBucketName := os.Getenv("MESSAGE_BUCKET_NAME")
+	if messageBucketName == "" {
+		log.Fatal("Message bucket name not provided")
 	}
 
 	encryptedOauthToken, err := base64.StdEncoding.DecodeString(encryptedEncodedOauthToken)
@@ -73,9 +80,17 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	query := scheduledMessages.Where("posted?", "==", false).Where("when", "<", time.Now())
 
+	storageClient, err := storage.NewClient(r.Context())
+	if err != nil {
+		log.Panic("Failed to connect to Cloud Storage")
+	}
+
+	messageBucket := storageClient.Bucket(messageBucketName)
+
 	type ScheduledMessage struct {
-		Channel string
-		Message string
+		Channel       string
+		Message       string
+		MessageObject string
 	}
 
 	iter := query.Documents(r.Context())
@@ -95,10 +110,32 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("Parsed message %v", m)
 		log.Println("Sending message to Slack")
-		_, _, err = slackClient.PostMessage(m.Channel, slack.MsgOptionText(m.Message, false))
+		messageText := ""
+		if m.Message != "" {
+			// Raw message
+			messageText = m.Message
+		} else {
+			// Cloud storage bucket message
+			obj := messageBucket.Object(m.MessageObject)
+			r, err := obj.NewReader(r.Context())
+			if err != nil {
+				log.Fatal("Failed to read expected object from Google Stroage")
+			}
+
+			buf := new(bytes.Buffer)
+			buf.ReadFrom(r)
+			messageText = buf.String()
+		}
+
+		// Actually fire to slack
+		if messageText == "" {
+			log.Fatal("No message to post?")
+		}
+		_, _, err = slackClient.PostMessage(m.Channel, slack.MsgOptionText(messageText, false))
 		if err != nil {
 			log.Fatal("Failed talking to Slack", err)
 		}
+
 		log.Println("Updated Cloud Firestore")
 		_, err = doc.Ref.Update(r.Context(), []firestore.Update{
 			{
