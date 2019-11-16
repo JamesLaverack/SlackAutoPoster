@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"google.golang.org/api/iterator"
 	"log"
 	"net/http"
 	"os"
@@ -15,6 +14,7 @@ import (
 	cloudkms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/storage"
 	"github.com/nlopes/slack"
+	"google.golang.org/api/iterator"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 )
 
