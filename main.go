@@ -58,11 +58,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	slackClient := slack.New(string(resp.Plaintext))
 
-	//_, _, err = slackClient.PostMessage("flight-gauge-scratch", slack.MsgOptionText("Cloud Run Invoked v2", false))
-	//if err != nil {
-	//	log.Fatal("Failed talking to Slack", err)
-	//}
-
 	projectID, err := metadata.ProjectID()
 	if err != nil {
 		log.Fatal("Failed to get current project ID", err)
