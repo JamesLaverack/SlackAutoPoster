@@ -118,7 +118,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			buf := new(bytes.Buffer)
-			buf.ReadFrom(r)
+			_, err = buf.ReadFrom(r)
+			if err != nil {
+				log.Fatal("Failed to read from Cloud Storage object", err)
+			}
 			messageText = buf.String()
 		}
 
