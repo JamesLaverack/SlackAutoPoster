@@ -114,7 +114,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			obj := messageBucket.Object(m.MessageObject)
 			r, err := obj.NewReader(r.Context())
 			if err != nil {
-				log.Fatal("Failed to read expected object from Google Stroage")
+				log.Fatal("Failed to read expected object from Google Storage")
 			}
 
 			buf := new(bytes.Buffer)
