@@ -1,3 +1,7 @@
+STATUS: ARCHIVED
+
+This has been nicely depricated by Slack adding a "schedule message" feature.
+
 # Slack AutoPoster
 
 ## What?
